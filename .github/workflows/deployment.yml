@@ -1,0 +1,292 @@
+name: Deploy Ockam Project Node
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      commit_sha:
+        description: Commit to build upon
+        required: true
+      bump:
+        type: choice
+        description: Version bump choice
+        default: minor
+        options:
+        - major
+        - minor
+        - patch
+
+permissions:
+  # Contents permission allows us read this repository.
+  contents: read
+
+concurrency: deploy_infra
+
+defaults:
+  run:
+    shell: bash
+
+env:
+  DOCKER_IMAGE: ghcr.io/build-trust/ockam-project-node
+  DOCKER_IMAGE_ARTIFACT: ghcr.io/build-trust/ockam-artifacts-project-node
+  REPOSITORY: build-trust
+  SLACK_CHANNEL: C02NBNDRZR6
+  RUNNER_URL: https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}
+  CRON_LOG_CSV: cron_commit_log.csv
+  PACKAGE_NAME: ockam_project_node
+
+jobs:
+  build-artifacts:
+    runs-on: ubuntu-20.04
+    permissions:
+      # Packages permission allows us write to the project node packages.
+      packages: write
+      # Ability to pull private repository
+      contents: write
+
+    outputs:
+      image-digest: ${{ steps.digest.outputs.image_digest }}
+      version: ${{ steps.bumped_version.outputs.updated_version }}
+      thread_id: ${{ steps.thread_id.outputs.thread_id }}
+      tag: ${{ steps.artifact_image_name.outputs.name }}
+
+    steps:
+      - name: Checkout To Ockam Cloud Repository
+        uses: actions/checkout@5a4ac9002d0be2fb38bd78e4b4dbde5606d7042f
+        with:
+          fetch-depth: 0
+
+      - name: Set Ockam Project Node Artifact Version
+        id: artifact_image_name
+        run: |
+          # Get Ockam Project Node Current Commit
+          current_commit=$(git rev-parse HEAD)
+          echo "name=${{ env.DOCKER_IMAGE_ARTIFACT }}:${current_commit}-$(date +'%b-%d-%Y')" >> $GITHUB_OUTPUT
+          echo "commit=$current_commit" >> $GITHUB_OUTPUT
+
+      - name: Create Notification Message On Start
+        id: start_message
+        run: |
+          if [[ -z "${{ github.event.inputs.commit_sha }}" ]]; then
+            echo 'message=:bulb: <${{ env.RUNNER_URL }}|Ockam Project Node Deployment> started on \`main\` branch on commit \`${{ steps.artifact_image_name.outputs.commit }}\` by \`cron-job\`' >> $GITHUB_OUTPUT
+          else
+            echo 'message=:bulb: <${{ env.RUNNER_URL }}|Ockam Project Node Deployment> started on commit \`${{ steps.artifact_image_name.outputs.commit }}\` by \`${{ github.actor }}\`' >> $GITHUB_OUTPUT
+          fi
+
+      - name: Notify Slack Channel Of Artifacts Image Build
+        id: thread_id
+        uses: build-trust/.github/actions/slack_notification@custom-actions
+        with:
+          message: '${{ steps.start_message.outputs.message }}'
+          slack_oauth: ${{ secrets.SLACK_OAUTH }}
+          slack_channel_id: ${{ env.SLACK_CHANNEL }}
+
+      - name: Bump Ockam Node Tag
+        id: bumped_version
+        uses: build-trust/.github/actions/semver_bump@custom-actions
+        with:
+          package_version_api_url: "https://api.github.com/orgs/${{ env.REPOSITORY }}/packages/container/${{ env.PACKAGE_NAME }}/versions"
+          bump: ${{ github.event.inputs.bump }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@bc135a1993a1d0db3e9debefa0cfcb70443cc94c # v2.1.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Docker Deploy
+        run: |
+          set -ex
+          docker build --build-arg ver="${{ steps.bumped_version.outputs.updated_version }}" --tag ${{ steps.artifact_image_name.outputs.name }} .
+          docker tag ${{ steps.artifact_image_name.outputs.name }} ${{ env.DOCKER_IMAGE_ARTIFACT }}:latest
+          docker push --all-tags ${{ env.DOCKER_IMAGE_ARTIFACT }}
+
+      - name: Get Image Digest
+        id: digest
+        uses: build-trust/.github/actions/docker_image_digest@add_image_digest_check
+        with:
+          image_name: ${{ steps.artifact_image_name.outputs.name }}
+
+      - name: Notify Slack Channel Of Artifacts Image Build
+        uses: build-trust/.github/actions/slack_notification@custom-actions
+        with:
+          message: ':white_check_mark: Artifacts image build successful. To pull image \`docker pull ${{ steps.artifact_image_name.outputs.name }}\`'
+          slack_oauth: ${{ secrets.SLACK_OAUTH }}
+          slack_channel_id: ${{ env.SLACK_CHANNEL }}
+          slack_thread_id: ${{ steps.thread_id.outputs.thread_id }}
+
+  run-bats-test-on-dev-cluster:
+    runs-on: ubuntu-20.04
+    needs: build-artifacts
+    environment: orchestrator_deployment
+
+    strategy:
+      fail-fast: false
+      matrix:
+        stage: [new_enroll]
+        include:
+        - stage: new_enroll
+          perform_ockam_enroll: true
+
+    permissions:
+      # Contents permission allows us read this repository.
+      packages: read
+
+    container: ghcr.io/build-trust/artifacts-helper@sha256:259b6475e195ea9f888738cd9b39d5e13eb577a3fedc02ea2bdabf3c2ce5f47a
+
+    steps:
+      - name: Notify Slack Channel On Bats Test Run
+        uses: build-trust/.github/actions/slack_notification@custom-actions
+        with:
+          message: ':bulb: Running bats tests on dev-cluster'
+          slack_oauth: ${{ secrets.SLACK_OAUTH }}
+          slack_channel_id: ${{ env.SLACK_CHANNEL }}
+          slack_thread_id: ${{ needs.build-artifacts.outputs.thread_id }}
+
+      - name: Run Bats Test
+        uses: build-trust/.github/actions/run_bats_test@custom-actions
+        with:
+          perform_ockam_enroll: ${{ matrix.perform_ockam_enroll }}
+          controller_id: P1a0518be33a77b9434aea008ffe9f3e390934130b752200cd6784be1b2ad4f2e
+          controller_addr: /dnsaddr/k8s-hubdev-hubconso-d9269a38ac-f590160b9ed5faa3.elb.us-west-1.amazonaws.com/tcp/62526/service/api
+          script_path: "/artifacts-scripts"
+
+      - name: Notify User On Bats Test Success
+        uses: build-trust/.github/actions/slack_notification@custom-actions
+        with:
+          message: ':white_check_mark: Ockam cloud dev-cluster test successful'
+          slack_oauth: ${{ secrets.SLACK_OAUTH }}
+          slack_channel_id: ${{ env.SLACK_CHANNEL }}
+          slack_thread_id: ${{ needs.build-artifacts.outputs.thread_id }}
+
+  # We can't have multiple environments for a single job, so we 
+  # split environments to two jobs, one which requires approval and
+  # one which has an environment that has cosign secrets.
+  approve_production_build:
+    runs-on: ubuntu-20.04
+    environment: orchestrator_deployment
+    needs: [build-artifacts, run-bats-test-on-dev-cluster]
+
+    steps:
+      - name: Notify Slack Channel On Production Image Deploy
+        uses: build-trust/.github/actions/slack_notification@custom-actions
+        with:
+          message: ':bulb: Deploying \`artifacts\` image to \`production\`'
+          slack_oauth: ${{ secrets.SLACK_OAUTH }}
+          slack_channel_id: ${{ env.SLACK_CHANNEL }}
+          slack_thread_id: ${{ needs.build-artifacts.outputs.thread_id }}
+
+  build-production:
+    runs-on: ubuntu-20.04
+    environment: sign_docker_images
+    needs: [approve_production_build, build-artifacts, run-bats-test-on-dev-cluster]
+
+    permissions:
+      # Packages permission allows us write to the project node packages.
+      packages: write
+
+    steps:
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@bc135a1993a1d0db3e9debefa0cfcb70443cc94c # v2.1.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Pull Artifacts Image
+        run: docker pull ${{ needs.build-artifacts.outputs.tag }}
+
+      - name: Get Pulled Image Digest
+        id: digest
+        uses: build-trust/.github/actions/docker_image_digest@add_image_digest_check
+        with:
+          image_name: ${{ needs.build-artifacts.outputs.tag }}
+
+      - name: Confirm Image Digests Are Same
+        run: |
+          pulled_digest="${{ steps.digest.outputs.image_digest }}"
+          pushed_digest="${{ needs.build-artifacts.outputs.image-digest }}"
+          if [[ "$pulled_digest" != "$pushed_digest" ]]; then
+            echo "Image digests not same please verify $pulled_digest $pushed_digest"
+            exit 1
+          fi
+
+      - name: Push To Production
+        run: |
+          docker tag ${{ needs.build-artifacts.outputs.tag }} ${DOCKER_IMAGE}:${{ needs.build-artifacts.outputs.version }}
+          docker tag ${{ needs.build-artifacts.outputs.tag }} ${DOCKER_IMAGE}:latest
+          docker push --all-tags ${DOCKER_IMAGE}
+
+      - name: Sign Container
+        uses: build-trust/.github/actions/image_cosign@custom-actions
+        with:
+          cosign_private_key: '${{ secrets.COSIGN_PRIVATE_KEY }}'
+          cosign_password: '${{ secrets.COSIGN_PRIVATE_KEY_PASSWORD }}'
+          image: '${DOCKER_IMAGE}:${{ needs.build-artifacts.outputs.version }}'
+          ref: 'v${{ needs.build-artifacts.outputs.version }}'
+
+      - name: Notify User On Production Success
+        uses: build-trust/.github/actions/slack_notification@custom-actions
+        with:
+          message: ':white_check_mark: Ockam cloud production image build successful'
+          slack_oauth: ${{ secrets.SLACK_OAUTH }}
+          slack_channel_id: ${{ env.SLACK_CHANNEL }}
+          slack_thread_id: ${{ needs.build-artifacts.outputs.thread_id }}
+
+  run-bats-test-on-production:
+    runs-on: ubuntu-20.04
+    needs: [build-artifacts, build-production]
+    environment: orchestrator_deployment
+
+    permissions:
+      # Contents permission allows us read this repository.
+      packages: read
+
+    strategy:
+      fail-fast: false
+      matrix:
+        stage: [cached_enroll, new_enroll]
+        include:
+        - stage: new_enroll
+          perform_ockam_enroll: true
+
+    container: ghcr.io/build-trust/artifacts-helper@sha256:259b6475e195ea9f888738cd9b39d5e13eb577a3fedc02ea2bdabf3c2ce5f47a
+
+    steps:
+      - name: Notify Slack Channel On Bats Test Run
+        uses: build-trust/.github/actions/slack_notification@custom-actions
+        with:
+          message: ':bulb: Running Ockam cloud bats test on \`production\`'
+          slack_oauth: ${{ secrets.SLACK_OAUTH }}
+          slack_channel_id: ${{ env.SLACK_CHANNEL }}
+          slack_thread_id: ${{ needs.build-artifacts.outputs.thread_id }}
+
+      - name: Run Ockam Bats Test
+        uses: build-trust/.github/actions/run_bats_test@custom-actions
+        with:
+          perform_ockam_enroll: ${{ matrix.perform_ockam_enroll }}
+          script_path: "/artifacts-scripts"
+
+      - name: Notify User On Bats Test Success
+        uses: build-trust/.github/actions/slack_notification@custom-actions
+        with:
+          message: ':white_check_mark: Ockam cloud production test run successful'
+          slack_oauth: ${{ secrets.SLACK_OAUTH }}
+          slack_channel_id: ${{ env.SLACK_CHANNEL }}
+          slack_thread_id: ${{ needs.build-artifacts.outputs.thread_id }}
+
+  notify-on-failure:
+    runs-on: ubuntu-20.04
+    needs: [build-artifacts, run-bats-test-on-dev-cluster, build-production, run-bats-test-on-production]
+    if: failure()
+    steps:
+      - name: Notify User On Bats Test Failure
+        uses: build-trust/.github/actions/slack_notification@custom-actions
+        with:
+          message: ':x: <${{ env.RUNNER_URL }}|Ockam cloud deployment> failed'
+          slack_oauth: ${{ secrets.SLACK_OAUTH }}
+          slack_channel_id: ${{ env.SLACK_CHANNEL }}
+          slack_thread_id: ${{ needs.build-artifacts.outputs.thread_id }}
