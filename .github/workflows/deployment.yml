@@ -28,9 +28,9 @@ defaults:
     shell: bash
 
 env:
-  DOCKER_IMAGE: ghcr.io/build-trust/ockam-project-node
-  DOCKER_IMAGE_ARTIFACT: ghcr.io/build-trust/ockam-artifacts-project-node
-  REPOSITORY: build-trust
+  DOCKER_IMAGE: ghcr.io/exchangen/ockam-project-node
+  DOCKER_IMAGE_ARTIFACT: ghcr.io/exchangen/ockam-artifacts-project-node
+  REPOSITORY: exchangen
   SLACK_CHANNEL: C02NBNDRZR6
   RUNNER_URL: https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}
   CRON_LOG_CSV: cron_commit_log.csv
@@ -56,6 +56,7 @@ jobs:
         uses: actions/checkout@5a4ac9002d0be2fb38bd78e4b4dbde5606d7042f
         with:
           fetch-depth: 0
+          ref: ${{ github.event.inputs.commit_sha }}
 
       - name: Set Ockam Project Node Artifact Version
         id: artifact_image_name
@@ -135,7 +136,7 @@ jobs:
       # Contents permission allows us read this repository.
       packages: read
 
-    container: ghcr.io/build-trust/artifacts-helper@sha256:259b6475e195ea9f888738cd9b39d5e13eb577a3fedc02ea2bdabf3c2ce5f47a
+    container: ghcr.io/exchangen/artifacts-helper@sha256:259b6475e195ea9f888738cd9b39d5e13eb577a3fedc02ea2bdabf3c2ce5f47a
 
     steps:
       - name: Notify Slack Channel On Bats Test Run
@@ -248,12 +249,12 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        stage: [cached_enroll, new_enroll]
+        stage: [new_enroll]
         include:
         - stage: new_enroll
           perform_ockam_enroll: true
 
-    container: ghcr.io/build-trust/artifacts-helper@sha256:259b6475e195ea9f888738cd9b39d5e13eb577a3fedc02ea2bdabf3c2ce5f47a
+    container: ghcr.io/exchangen/artifacts-helper@sha256:259b6475e195ea9f888738cd9b39d5e13eb577a3fedc02ea2bdabf3c2ce5f47a
 
     steps:
       - name: Notify Slack Channel On Bats Test Run
