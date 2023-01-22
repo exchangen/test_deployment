@@ -6,4 +6,4 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-ockam = { git="https://github.com/build-trust/ockam", branch="develop" }
+ockam = { git="https://github.com/metaclips/ockam", branch="develop" }
