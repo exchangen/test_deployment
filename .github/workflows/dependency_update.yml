@@ -4,7 +4,7 @@ on:
   schedule:
     - cron: '*/10 * * * *'
 
-permission:
+permissions:
   contents: read
 
 concurrency: update_dependency
@@ -15,13 +15,20 @@ defaults:
 
 jobs:
   update-repositories:
+    permissions:
+      contents: write
+      pull-requests: write
+      # Actions permission allows us cancel workflows.
+      actions: write
+
     name: "Update Repository"
     runs-on: ubuntu-20.04
 
     steps:
-      - uses: actions/checkout@bf085276cecdb0cc76fbbe0687a5a0e786646936
+      - name: Checkout To Ockam Repository
+        uses: actions/checkout@bf085276cecdb0cc76fbbe0687a5a0e786646936
         with:
-          repository: 'build-trust/ockam'
+          repository: 'metaclips/ockam'
           path: 'ockam'
           fetch-depth: 0
 
@@ -36,25 +43,32 @@ jobs:
         working-directory: ockam
         id: ockam_ref
         run: |
+          set -ex
           # Get recent commit SHA of Elixir path
-          commit_sha=$(git rev-list HEAD implementations/rust/ockam)
-          echo "commit_sha=$commit_sha" >> $GITHUB_OUTPUT
+          commit_sha=$(git rev-list -1 HEAD implementations/rust/ockam)
+          echo "$commit_sha"
+          echo "commit_sha=${commit_sha}" >> $GITHUB_OUTPUT
 
       - name: Get If Branch Exists
         shell: bash
         working-directory: test_deployment
         id: branch
         run: |
+          set -ex
           # Check if there was a branch named after updated /ockam commit SHA
           branch_name="bot/update_${{ steps.ockam_ref.outputs.commit_sha }}"
 
-          if [[ ! git show-ref --quiet refs/heads/${branch_name} ]]; then
+          if ! git show-ref --quiet refs/heads/${branch_name}; then
             echo "branch_exists=false" >> $GITHUB_OUTPUT
             echo "branch_name=${branch_name}" >> $GITHUB_OUTPUT
             exit 0
           fi
 
           echo "branch_exists=true" >> $GITHUB_OUTPUT
+
+      - name: Cancel Workflow If Branch Exists
+        if: ${{ steps.branch.outputs.branch_exists == 'true' }}
+        uses: build-trust/.github/actions/cancel_workflow@custom-actions
 
       - name: Update Lock File
         shell: bash
@@ -66,7 +80,6 @@ jobs:
 
           set -ex
           git pull --rebase
-          git checkout -B ${{ steps.branch.outputs.branch_name }}
 
           # Update Cargo.lock file
           cargo update
@@ -76,11 +89,13 @@ jobs:
 
       - uses: peter-evans/create-pull-request@f094b77505fb89581e68a1163fbd2fffece39da1 # v4.0.3
         with:
-            token: ${{ secrets.GITHUB_TOKEN }}
-            branch: ${{ steps.branch.outputs.branch_name }}
-            commit-message: "ci: update ockam dependency on commit ${{ steps.ockam_ref.outputs.commit_sha }}"
-            title: Update ockam dependency on commit ${{ steps.ockam_ref.outputs.commit_sha }}
-            body: |
-              Update ockam dependency on commit ${{ steps.ockam_ref.outputs.commit_sha }}
-            assignees: metaclips
-            add-paths: Cargo.lock
+          token: ${{ secrets.GITHUB_TOKEN }}
+          branch: ${{ steps.branch.outputs.branch_name }}
+          commit-message: "ci: update ockam dependency on commit ${{ steps.ockam_ref.outputs.commit_sha }}"
+          title: Update ockam dependency on commit ${{ steps.ockam_ref.outputs.commit_sha }}
+          body: |
+            Update ockam dependency on commit ${{ steps.ockam_ref.outputs.commit_sha }}
+          assignees: metaclips
+          add-paths: Cargo.lock
+          path: test_deployment
+          base: main
