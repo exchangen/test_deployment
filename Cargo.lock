@@ -81,9 +81,9 @@ checksum = "a4c527152e37cf757a3f78aae5a06fbeefdb07ccc535c980a3208ee3060dd544"
 
 [[package]]
 name = "async-trait"
-version = "0.1.62"
+version = "0.1.63"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "689894c2db1ea643a50834b999abf1c110887402542955ff5451dab8f861f9ed"
+checksum = "eff18d764974428cf3a9328e23fc5c986f5fbed46e6cd4cdf42544df5d297ec1"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -525,9 +525,9 @@ dependencies = [
 
 [[package]]
 name = "gimli"
-version = "0.27.0"
+version = "0.27.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dec7af912d60cdbd3677c1af9352ebae6fb8394d165568a2234df0fa00f87793"
+checksum = "221996f774192f0f718773def8201c4ae31f02616a54ccfc2d358bb0e5cefdec"
 
 [[package]]
 name = "group"
@@ -737,9 +737,9 @@ dependencies = [
 
 [[package]]
 name = "object"
-version = "0.30.2"
+version = "0.30.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2b8c786513eb403643f2a88c244c2aaa270ef2153f55094587d0c48a3cf22a83"
+checksum = "ea86265d3d3dcb6a27fc51bd29a4bf387fae9d2986b823079d4986af253eb439"
 dependencies = [
  "memchr",
 ]
@@ -747,13 +747,14 @@ dependencies = [
 [[package]]
 name = "ockam"
 version = "0.78.0"
-source = "git+https://github.com/build-trust/ockam?branch=develop#ce6bc3ef1e4badaf4c32f517d9e225d8d650aa3f"
+source = "git+https://github.com/metaclips/ockam?branch=develop#402e52b3b03ec4fb853b260eda384f72db4a2de9"
 dependencies = [
  "arrayref",
  "dyn-clone",
  "hex",
  "minicbor",
  "ockam_abac",
+ "ockam_channel",
  "ockam_core",
  "ockam_identity",
  "ockam_key_exchange_core",
@@ -771,7 +772,7 @@ dependencies = [
 [[package]]
 name = "ockam_abac"
 version = "0.12.0"
-source = "git+https://github.com/build-trust/ockam?branch=develop#ce6bc3ef1e4badaf4c32f517d9e225d8d650aa3f"
+source = "git+https://github.com/metaclips/ockam?branch=develop#402e52b3b03ec4fb853b260eda384f72db4a2de9"
 dependencies = [
  "either",
  "minicbor",
@@ -785,9 +786,25 @@ dependencies = [
 ]
 
 [[package]]
+name = "ockam_channel"
+version = "0.72.0"
+source = "git+https://github.com/metaclips/ockam?branch=develop#402e52b3b03ec4fb853b260eda384f72db4a2de9"
+dependencies = [
+ "ockam_core",
+ "ockam_key_exchange_core",
+ "ockam_key_exchange_xx",
+ "ockam_macros",
+ "ockam_node",
+ "ockam_vault",
+ "rand 0.8.5",
+ "serde",
+ "tracing",
+]
+
+[[package]]
 name = "ockam_core"
 version = "0.72.0"
-source = "git+https://github.com/build-trust/ockam?branch=develop#ce6bc3ef1e4badaf4c32f517d9e225d8d650aa3f"
+source = "git+https://github.com/metaclips/ockam?branch=develop#402e52b3b03ec4fb853b260eda384f72db4a2de9"
 dependencies = [
  "async-trait",
  "backtrace",
@@ -813,7 +830,7 @@ dependencies = [
 [[package]]
 name = "ockam_executor"
 version = "0.40.0"
-source = "git+https://github.com/build-trust/ockam?branch=develop#ce6bc3ef1e4badaf4c32f517d9e225d8d650aa3f"
+source = "git+https://github.com/metaclips/ockam?branch=develop#402e52b3b03ec4fb853b260eda384f72db4a2de9"
 dependencies = [
  "crossbeam-queue",
  "futures",
@@ -827,13 +844,14 @@ dependencies = [
 [[package]]
 name = "ockam_identity"
 version = "0.66.0"
-source = "git+https://github.com/build-trust/ockam?branch=develop#ce6bc3ef1e4badaf4c32f517d9e225d8d650aa3f"
+source = "git+https://github.com/metaclips/ockam?branch=develop#402e52b3b03ec4fb853b260eda384f72db4a2de9"
 dependencies = [
  "cfg-if",
  "group 0.13.0",
  "heapless",
  "hex",
  "minicbor",
+ "ockam_channel",
  "ockam_core",
  "ockam_key_exchange_core",
  "ockam_key_exchange_xx",
@@ -852,7 +870,7 @@ dependencies = [
 [[package]]
 name = "ockam_key_exchange_core"
 version = "0.63.0"
-source = "git+https://github.com/build-trust/ockam?branch=develop#ce6bc3ef1e4badaf4c32f517d9e225d8d650aa3f"
+source = "git+https://github.com/metaclips/ockam?branch=develop#402e52b3b03ec4fb853b260eda384f72db4a2de9"
 dependencies = [
  "ockam_core",
  "zeroize",
@@ -861,7 +879,7 @@ dependencies = [
 [[package]]
 name = "ockam_key_exchange_xx"
 version = "0.68.0"
-source = "git+https://github.com/build-trust/ockam?branch=develop#ce6bc3ef1e4badaf4c32f517d9e225d8d650aa3f"
+source = "git+https://github.com/metaclips/ockam?branch=develop#402e52b3b03ec4fb853b260eda384f72db4a2de9"
 dependencies = [
  "ockam_core",
  "ockam_key_exchange_core",
@@ -871,7 +889,7 @@ dependencies = [
 [[package]]
 name = "ockam_macros"
 version = "0.26.0"
-source = "git+https://github.com/build-trust/ockam?branch=develop#ce6bc3ef1e4badaf4c32f517d9e225d8d650aa3f"
+source = "git+https://github.com/metaclips/ockam?branch=develop#402e52b3b03ec4fb853b260eda384f72db4a2de9"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -881,7 +899,7 @@ dependencies = [
 [[package]]
 name = "ockam_node"
 version = "0.75.0"
-source = "git+https://github.com/build-trust/ockam?branch=develop#ce6bc3ef1e4badaf4c32f517d9e225d8d650aa3f"
+source = "git+https://github.com/metaclips/ockam?branch=develop#402e52b3b03ec4fb853b260eda384f72db4a2de9"
 dependencies = [
  "futures",
  "minicbor",
@@ -899,7 +917,7 @@ dependencies = [
 [[package]]
 name = "ockam_transport_core"
 version = "0.45.0"
-source = "git+https://github.com/build-trust/ockam?branch=develop#ce6bc3ef1e4badaf4c32f517d9e225d8d650aa3f"
+source = "git+https://github.com/metaclips/ockam?branch=develop#402e52b3b03ec4fb853b260eda384f72db4a2de9"
 dependencies = [
  "ockam_core",
  "tracing",
@@ -908,7 +926,7 @@ dependencies = [
 [[package]]
 name = "ockam_transport_tcp"
 version = "0.73.0"
-source = "git+https://github.com/build-trust/ockam?branch=develop#ce6bc3ef1e4badaf4c32f517d9e225d8d650aa3f"
+source = "git+https://github.com/metaclips/ockam?branch=develop#402e52b3b03ec4fb853b260eda384f72db4a2de9"
 dependencies = [
  "hashbrown",
  "ockam_core",
@@ -925,7 +943,7 @@ dependencies = [
 [[package]]
 name = "ockam_vault"
 version = "0.68.0"
-source = "git+https://github.com/build-trust/ockam?branch=develop#ce6bc3ef1e4badaf4c32f517d9e225d8d650aa3f"
+source = "git+https://github.com/metaclips/ockam?branch=develop#402e52b3b03ec4fb853b260eda384f72db4a2de9"
 dependencies = [
  "aes-gcm",
  "arrayref",
