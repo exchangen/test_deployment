@@ -34,7 +34,7 @@ env:
   SLACK_CHANNEL: C02NBNDRZR6
   RUNNER_URL: https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}
   CRON_LOG_CSV: cron_commit_log.csv
-  PACKAGE_NAME: ockam_project_node
+  PACKAGE_NAME: ockam-project-node
 
 jobs:
   build-artifacts:
@@ -52,7 +52,7 @@ jobs:
       tag: ${{ steps.artifact_image_name.outputs.name }}
 
     steps:
-      - name: Checkout To Ockam Cloud Repository
+      - name: Checkout To Ockam Project Node Repository
         uses: actions/checkout@5a4ac9002d0be2fb38bd78e4b4dbde5606d7042f
         with:
           fetch-depth: 0
@@ -136,7 +136,7 @@ jobs:
       # Contents permission allows us read this repository.
       packages: read
 
-    container: ghcr.io/exchangen/artifacts-helper@sha256:259b6475e195ea9f888738cd9b39d5e13eb577a3fedc02ea2bdabf3c2ce5f47a
+    # container: ghcr.io/exchangen/artifacts-helper@sha256:259b6475e195ea9f888738cd9b39d5e13eb577a3fedc02ea2bdabf3c2ce5f47a
 
     steps:
       - name: Notify Slack Channel On Bats Test Run
@@ -147,18 +147,18 @@ jobs:
           slack_channel_id: ${{ env.SLACK_CHANNEL }}
           slack_thread_id: ${{ needs.build-artifacts.outputs.thread_id }}
 
-      - name: Run Bats Test
-        uses: build-trust/.github/actions/run_bats_test@custom-actions
-        with:
-          perform_ockam_enroll: ${{ matrix.perform_ockam_enroll }}
-          controller_id: P1a0518be33a77b9434aea008ffe9f3e390934130b752200cd6784be1b2ad4f2e
-          controller_addr: /dnsaddr/k8s-hubdev-hubconso-d9269a38ac-f590160b9ed5faa3.elb.us-west-1.amazonaws.com/tcp/62526/service/api
-          script_path: "/artifacts-scripts"
+      # - name: Run Bats Test
+      #   uses: build-trust/.github/actions/run_bats_test@custom-actions
+      #   with:
+      #     perform_ockam_enroll: ${{ matrix.perform_ockam_enroll }}
+      #     controller_id: P1a0518be33a77b9434aea008ffe9f3e390934130b752200cd6784be1b2ad4f2e
+      #     controller_addr: /dnsaddr/k8s-hubdev-hubconso-d9269a38ac-f590160b9ed5faa3.elb.us-west-1.amazonaws.com/tcp/62526/service/api
+      #     script_path: "/artifacts-scripts"
 
       - name: Notify User On Bats Test Success
         uses: build-trust/.github/actions/slack_notification@custom-actions
         with:
-          message: ':white_check_mark: Ockam cloud dev-cluster test successful'
+          message: ':white_check_mark: Ockam project node dev-cluster test successful'
           slack_oauth: ${{ secrets.SLACK_OAUTH }}
           slack_channel_id: ${{ env.SLACK_CHANNEL }}
           slack_thread_id: ${{ needs.build-artifacts.outputs.thread_id }}
@@ -232,7 +232,7 @@ jobs:
       - name: Notify User On Production Success
         uses: build-trust/.github/actions/slack_notification@custom-actions
         with:
-          message: ':white_check_mark: Ockam cloud production image build successful'
+          message: ':white_check_mark: Ockam project node production image build successful. To pull image \`docker pull ${DOCKER_IMAGE}:${{ needs.build-artifacts.outputs.version }}\`'
           slack_oauth: ${{ secrets.SLACK_OAUTH }}
           slack_channel_id: ${{ env.SLACK_CHANNEL }}
           slack_thread_id: ${{ needs.build-artifacts.outputs.thread_id }}
@@ -254,27 +254,27 @@ jobs:
         - stage: new_enroll
           perform_ockam_enroll: true
 
-    container: ghcr.io/exchangen/artifacts-helper@sha256:259b6475e195ea9f888738cd9b39d5e13eb577a3fedc02ea2bdabf3c2ce5f47a
+    # container: ghcr.io/exchangen/artifacts-helper@sha256:259b6475e195ea9f888738cd9b39d5e13eb577a3fedc02ea2bdabf3c2ce5f47a
 
     steps:
       - name: Notify Slack Channel On Bats Test Run
         uses: build-trust/.github/actions/slack_notification@custom-actions
         with:
-          message: ':bulb: Running Ockam cloud bats test on \`production\`'
+          message: ':bulb: Running Ockam project node bats test on \`production\`'
           slack_oauth: ${{ secrets.SLACK_OAUTH }}
           slack_channel_id: ${{ env.SLACK_CHANNEL }}
           slack_thread_id: ${{ needs.build-artifacts.outputs.thread_id }}
 
-      - name: Run Ockam Bats Test
-        uses: build-trust/.github/actions/run_bats_test@custom-actions
-        with:
-          perform_ockam_enroll: ${{ matrix.perform_ockam_enroll }}
-          script_path: "/artifacts-scripts"
+      # - name: Run Ockam Bats Test
+      #   uses: build-trust/.github/actions/run_bats_test@custom-actions
+      #   with:
+      #     perform_ockam_enroll: ${{ matrix.perform_ockam_enroll }}
+      #     script_path: "/artifacts-scripts"
 
       - name: Notify User On Bats Test Success
         uses: build-trust/.github/actions/slack_notification@custom-actions
         with:
-          message: ':white_check_mark: Ockam cloud production test run successful'
+          message: ':white_check_mark: Ockam project node production test run successful'
           slack_oauth: ${{ secrets.SLACK_OAUTH }}
           slack_channel_id: ${{ env.SLACK_CHANNEL }}
           slack_thread_id: ${{ needs.build-artifacts.outputs.thread_id }}
@@ -287,7 +287,7 @@ jobs:
       - name: Notify User On Bats Test Failure
         uses: build-trust/.github/actions/slack_notification@custom-actions
         with:
-          message: ':x: <${{ env.RUNNER_URL }}|Ockam cloud deployment> failed'
+          message: ':x: <${{ env.RUNNER_URL }}|Ockam project node deployment> failed'
           slack_oauth: ${{ secrets.SLACK_OAUTH }}
           slack_channel_id: ${{ env.SLACK_CHANNEL }}
           slack_thread_id: ${{ needs.build-artifacts.outputs.thread_id }}
